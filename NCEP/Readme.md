@@ -32,6 +32,10 @@ conda activate mlwp
 ```
 
 ```bash
+conda install --channel conda-forge pygrib requests bs4
+```
+
+```bash
 pip install dm-tree boto3 xarray netcdf4
 ```
 
