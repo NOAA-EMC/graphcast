@@ -47,6 +47,12 @@ conda install --channel conda-forge cartopy
 pip install --upgrade https://github.com/deepmind/graphcast/archive/master.zip
 ```
 
+If your OS is MacOS, wget has to be installed:
+
+```bash
+brew install wget
+```
+
 If you would like to save as grib2 format, the following packages are needed:
 
 ```bash
