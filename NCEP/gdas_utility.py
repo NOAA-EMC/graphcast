@@ -635,11 +635,11 @@ if __name__ == "__main__":
         os.environ['AWS_CONFIG_FILE']=custom_config_file
 
     # check environment variables
-    if (download_source == 's3') & (os.environ.get('AWS_SHARED_CREDENTIALS_FILE') is None) | (os.environ.get('AWS_CONFIG_FILE') is None):
-        if os.environ.get('AWS_SHARED_CREDENTIALS_FILE') is None:
-            raise ValueError('Please set up environment varialbes AWS_SHARED_CREDENTIALS_FILE')
-        if os.environ.get('AWS_CONFIG_FILE') is None:
-            raise ValueError('Please set up environment varialbes AWS_CONFIG_FILE')
+        if (download_source == 's3') & (os.environ.get('AWS_SHARED_CREDENTIALS_FILE') is None) | (os.environ.get('AWS_CONFIG_FILE') is None):
+            if os.environ.get('AWS_SHARED_CREDENTIALS_FILE') is None:
+                raise ValueError('Please set up environment varialbes AWS_SHARED_CREDENTIALS_FILE')
+            if os.environ.get('AWS_CONFIG_FILE') is None:
+                raise ValueError('Please set up environment varialbes AWS_CONFIG_FILE')
 
     data_processor = GFSDataProcessor(start_datetime, end_datetime, num_pressure_levels, download_source, output_directory, download_directory, keep_downloaded_data)
     data_processor.download_data()
