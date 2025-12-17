@@ -248,7 +248,6 @@ def make_loss_new(model_config : 'graphcast.graphcast.ModelConfig',
         if (time_bias or mean_bias):
             raise (ValueError('Spectral AMSE loss is not compatible with time-bias or mean-bias loss terms'))
         
-        #import trainer.spectrum
         import graphcast.spectrum
         # Generate spectral coefficients
         if not silent: print('Generating spectral coefficients')
@@ -297,9 +296,6 @@ def spectral_adj_loss(prediction : 'xarray.Dataset',analysis : 'xarray.Dataset',
     import numpy as np
     import xarray as xr
     
-    #from trainer.spectrum import sht_ds
-    #from trainer.spectrum import power_spectral_density_ds
-    #from trainer.spectrum import cross_spectral_density_ds
     from graphcast.spectrum import sht_ds
     from graphcast.spectrum import power_spectral_density_ds
     from graphcast.spectrum import cross_spectral_density_ds

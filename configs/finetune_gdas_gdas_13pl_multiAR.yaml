@@ -1,0 +1,70 @@
+# FOR FINETUNING graphcast with gdas-gdas (20210323-20240930) and starting from AIGFSv1
+
+# Model weights to start the fine tuning from.
+initial_params: /scratch3/NCEPDEV/nems/Linlin.Cui/gc_weights/params/AIGFSv1.npz
+#last_checkpoint: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/git/others/graphcast/checkpoints_gdas_gdas_amse_1AR/checkpoint_step_24999_loss_1.7799_val_0.0000.pkl
+#last_checkpoint: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/run02/checkpoints_gdas_gdas_amse_2AR/checkpoint_step_2499_loss_2.3115_val_0.0000.pkl
+#last_checkpoint: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/run02/checkpoints_gdas_gdas_amse_3AR/checkpoint_step_2499_loss_2.7607_val_0.0000.pkl
+#last_checkpoint: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/run02/checkpoints_gdas_gdas_amse_4AR/checkpoint_step_2499_loss_3.0393_val_0.0000.pkl
+#last_checkpoint: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/run02/checkpoints_gdas_gdas_amse_8AR/checkpoint_step_1249_loss_4.0001_val_0.0000.pkl
+#
+#last_checkpoint: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/run02/checkpoints_gdas_gdas_amse_5AR/checkpoint_step_999_loss_3.3142_val_0.0000.pkl
+#last_checkpoint: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/run02/checkpoints_gdas_gdas_amse_6AR/checkpoint_step_999_loss_3.5552_val_0.0000.pkl
+#last_checkpoint: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/run02/checkpoints_gdas_gdas_amse_7AR/checkpoint_step_999_loss_3.8906_val_0.0000.pkl
+#last_checkpoint: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/run02/checkpoints_gdas_gdas_amse_8AR/checkpoint_step_999_loss_4.0152_val_0.0000.pkl
+#last_checkpoint: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/run02/checkpoints_gdas_gdas_amse_9AR/checkpoint_step_999_loss_4.3107_val_0.0000.pkl
+#last_checkpoint: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/run02/checkpoints_gdas_gdas_amse_10AR/checkpoint_step_999_loss_4.7392_val_0.0000.pkl
+#last_checkpoint: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/run02/checkpoints_gdas_gdas_amse_11AR/checkpoint_step_999_loss_5.0362_val_0.0000.pkl
+last_checkpoint: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/run02/checkpoints_gdas_gdas_amse_12AR/checkpoint_step_860_loss_5.3516_val_0.0000.pkl
+
+#--------------------------------------------
+# Path to the normalization statistics 
+norm_stats_path: /scratch3/NCEPDEV/nems/Linlin.Cui/gc_weights/stats
+#--------------------------------------------
+
+# Path to save new checkpoint 
+checkpoint_dir:  /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/run02/checkpoints_gdas_gdas_amse
+
+val_steps: 12 #AR
+total_training_steps : 1000  #total training steps
+
+# Learning rate & fine-tuning parameters
+lr_scheduler : cosine_decay
+cosine_peak_lr : 2.5e-6
+cosine_end_lr: 7.5e-8
+warmup_steps : 128
+exponent: 1.0
+
+# optimizer
+optimizer : adamw
+b1: 0.9
+b2: 0.95
+weight_decay: 0.1
+
+# Dataset
+train_zarr_path: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/data/gdas_13pl_0p25_20210323-20240930_with_tp.zarr
+        
+# Loss function
+#--------------------------------------------
+loss_metric : 'AMSE'
+
+# Number of samples processed per GPU for a single step of gradient descent
+# If using multiple GPUs, effective_batch_size = batch_size * n_gpus
+# to each GPU. 
+batch_size : 1
+prefetch_size : 1
+num_workers : 1
+
+# How often to save the weights (in terms of gradient descent steps) 
+checkpoint_frequency : 10
+
+# How often to  validate the model
+validate: False
+val_zarr_path: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/data/gdas_13pl_0p25_20241001-20250930_with_tp.zarr
+val_frequency : 10
+
+# Whether to resume training
+resume : True
+
+# Whether to print diagnostics 
+save_diag : True

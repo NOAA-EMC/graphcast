@@ -1,16 +1,15 @@
 #!/bin/bash
 
-#SBATCH --job-name=gdas12AR
+#SBATCH --job-name=gdas1AR_control
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=2
 #SBATCH --gpus-per-node=2
-#SBATCH --exclude=u21g07
 #SBATCH --account=gpu-ai4wp
-#SBATCH --time=4:00:00
+#SBATCH --time=36:00:00
 #SBATCH --partition=u1-h100
 #SBATCH --qos=gpu
-#SBATCH --output=slurm/train_gdas_12AR.%j.out
-#SBATCH --error=slurm/train_gdas_12AR.%j.err
+#SBATCH --output=slurm/train_gdas_1AR_control.%j.out
+#SBATCH --error=slurm/train_gdas_1AR_control.%j.err
 #SBATCH --exclusive
 
 module purge 
@@ -35,7 +34,7 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 export JAX_PLATFORMS=cuda
 export XLA_PYTHON_CLIENT_PREALLOCATE=true
 export XLA_PYTHON_CLIENT_MEM_FRACTION=0.85
-#export TF_FORCE_UNIFIED_MEMORY=1
+export TF_FORCE_UNIFIED_MEMORY=1
 
 #AMD Genoa CPU optimization
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
@@ -59,7 +58,7 @@ mpirun -np ${SLURM_NTASKS} \
     -x XLA_PYTHON_CLIENT_PREALLOCATE \
     -x XLA_PYTHON_CLIENT_MEM_FRACTION \
     -x TF_FORCE_UNIFIED_MEMORY \
-    numactl --interleave=all python -u train.py --config=configs/finetune_gdas_gdas_13pl_multiAR.yaml --error-weights=/scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/run02/custom_loss_weights.pkl
+    numactl --interleave=all python train.py --config=configs/finetune_gdas_gdas_13pl_control.yaml
 
 echo ""
 echo "Job finished at: $(date)"

@@ -1,0 +1,56 @@
+# FOR FINETUNING graphcast with gdas-gdas (20210323-20240930) and starting from AIGFSv1
+
+# Model weights to start the fine tuning from.
+initial_params : /scratch3/NCEPDEV/nems/Linlin.Cui/gc_weights/params/AIGFSv1.npz
+last_checkpoint: None
+#--------------------------------------------
+# Path to the normalization statistics 
+norm_stats_path : /scratch3/NCEPDEV/nems/Linlin.Cui/gc_weights/stats
+#--------------------------------------------
+
+# Path to save new checkpoint 
+checkpoint_dir :  /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/run02/checkpoints_gdas_gdas_amse
+
+val_steps : 1 #AR
+total_training_steps : 25000  #total training steps
+
+# Learning rate & fine-tuning parameters
+lr_scheduler : cosine_decay
+cosine_peak_lr : 2.5e-5
+cosine_end_lr: 1.25e-7
+warmup_steps : 128
+exponent: 1.0
+
+# optimizer
+optimizer : adamw
+b1: 0.9
+b2: 0.95
+weight_decay: 0.1
+
+# Dataset
+train_zarr_path: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/data/gdas_13pl_0p25_20210323-20240930_with_tp.zarr
+        
+# Loss function
+#--------------------------------------------
+loss_metric : 'AMSE'
+
+# Number of samples processed per GPU for a single step of gradient descent
+# If using multiple GPUs, effective_batch_size = batch_size * n_gpus
+# to each GPU. 
+batch_size : 1
+prefetch_size : 1
+num_workers : 1
+
+# How often to save the weights (in terms of gradient descent steps) 
+checkpoint_frequency : 10
+
+# How often to  validate the model
+validate: False
+val_zarr_path: /scratch3/NAGAPE/gpu-ai4wp/Linlin.Cui/graphcast_amse/data/gdas_13pl_0p25_20241001-20250930_with_tp.zarr
+val_frequency : 10
+
+# Whether to resume training
+resume : False
+
+# Whether to print diagnostics 
+save_diag : True

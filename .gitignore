@@ -1,3 +1,4 @@
 *.egg*
 __pycache__
 *.swp
+/slurm/

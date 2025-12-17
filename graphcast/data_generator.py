@@ -11,8 +11,8 @@ from graphcast import data_utils
 from graphcast import graphcast
 from graphcast import checkpoint
 
-#I used layerquantizer to save hres data. To use it, import it first
-#import layerquantizer
+#layerquantizer was used to save data. To use it, import it first
+import layerquantizer
 
 dask.config.set(**{'array.slicing.split_large_chunks': False})
 
@@ -55,13 +55,6 @@ class SingleZarrDataGenerator:
         print(f"Rank {rank}: Opening zarr dataset...")
         self.dataset = xr.open_zarr(zarr_path, chunks='auto')
         
-        # Prepare dataset: WeatherBench2 HRES dataset doesn't have variables orog and lsm. 
-        # When adding orog and lsm to zarr file, I forgot to reanme longitude and latitude to lon/lat
-        #self._prepare_dataset_hres()
-
-        # Need pre-processing gdas dataset created by ufs2arco package
-        #self._prepare_dataset_gdas()
-        
         self.n_samples = self.dataset.sizes['time']
         random_seed = random_seed + rank * 10000
         
@@ -88,46 +81,6 @@ class SingleZarrDataGenerator:
         print(f"  Batch size: {batch_size}")
         print(f"  Prefetch: {prefetch_size}, Workers: {num_workers}")
     
-    def _prepare_dataset_hres(self):
-
-        gh_corrected = self.dataset['geopotential_at_surface'].rename({
-            'latitude': 'lat',
-            'longitude': 'lon'
-        })
-
-        lsm_corrected = self.dataset['land_sea_mask'].rename({
-            'latitude': 'lat',
-            'longitude': 'lon'
-        })
-
-        self.dataset = self.dataset.drop_vars(['geopotential_at_surface', 'land_sea_mask', 'latitude', 'longitude'], errors='ignore')
-
-        self.dataset['geopotential_at_surface'] = gh_corrected
-        self.dataset['land_sea_mask'] = lsm_corrected
-
-    def _prepare_dataset_gdas(self):
-        """Prepare and normalize the dataset"""
-        rename_dict = {
-            't0': 'time',
-            #'longitude': 'lon',
-            #'latitude': 'lat',
-        }
-        rename_dict = {k: v for k, v in rename_dict.items() if k in self.dataset.dims}
-        if rename_dict:
-            self.dataset = self.dataset.rename(rename_dict)
-        
-        drop_vars = ["fhr", "lead_time", "valid_time"]
-        drop_vars = [v for v in drop_vars if v in self.dataset.data_vars or v in self.dataset.coords]
-        if drop_vars:
-            self.dataset = self.dataset.drop_vars(drop_vars)
-        
-        if 'fhr' in self.dataset.dims:
-            self.dataset = self.dataset.squeeze('fhr')
-
-        if np.diff(self.dataset.lat)[0] < 0:
-            # ufs2arco generated lat is [90, -90], reindex lat to [-90, 90]
-            self.dataset = self.dataset.reindex(lat=self.dataset.lat[::-1])
-        
     def _get_random_indices(self, seed):
         """Generate random indices for batch sampling"""
         rs = np.random.RandomState(seed)
@@ -182,12 +135,12 @@ class SingleZarrDataGenerator:
                 if var in dataset_slice and 'batch' in dataset_slice[var].dims:
                     dataset_slice[var] = dataset_slice[var].isel(batch=0)
             
-            # Add precipitation if needed
-            if 'total_precipitation_6hr' not in dataset_slice:
-                DIMS = ['batch', 'time', 'lat', 'lon']
-                zeros_shape = tuple(dataset_slice.sizes[dim] for dim in DIMS)
-                zeros_array = np.zeros(zeros_shape, dtype=np.float32)
-                dataset_slice['total_precipitation_6hr'] = (DIMS, zeros_array)
+            ## Add precipitation if not exists
+            #if 'total_precipitation_6hr' not in dataset_slice:
+            #    DIMS = ['batch', 'time', 'lat', 'lon']
+            #    zeros_shape = tuple(dataset_slice.sizes[dim] for dim in DIMS)
+            #    zeros_array = np.zeros(zeros_shape, dtype=np.float32)
+            #    dataset_slice['total_precipitation_6hr'] = (DIMS, zeros_array)
             
             # Convert to static
             dataset_slice = self._to_static_vars(dataset_slice)

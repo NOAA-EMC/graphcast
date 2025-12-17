@@ -14,6 +14,7 @@ from time import time
 import argparse
 import yaml
 #import logging
+from tqdm import tqdm
 
 import numpy as np
 import xarray as xr
@@ -29,8 +30,8 @@ import mpi4jax
 from graphcast import autoregressive
 from graphcast import casting
 from graphcast import checkpoint
-from graphcast import data_utils
-from graphcast import graphcast
+#from graphcast import graphcast
+import graphcast.graphcast as gc
 from graphcast import normalization
 from graphcast import xarray_jax
 from graphcast import xarray_tree
@@ -128,14 +129,14 @@ def configure_memory():
 # =============================================================================
 
 def construct_wrapped_graphcast(
-    model_config: graphcast.ModelConfig,
-    task_config: graphcast.TaskConfig,
+    model_config: gc.ModelConfig,
+    task_config: gc.TaskConfig,
     diffs_stddev_by_level: xr.Dataset,
     mean_by_level: xr.Dataset,
     stddev_by_level: xr.Dataset
 ):
     """Constructs and wraps the GraphCast Predictor."""
-    predictor = graphcast.GraphCast(model_config, task_config)
+    predictor = gc.GraphCast(model_config, task_config)
     predictor = casting.Bfloat16Cast(predictor)
     predictor = normalization.InputsAndResiduals(
         predictor,
@@ -257,6 +258,7 @@ def train_graphcast(
     setup_jax_distributed()
 
     batch_size = config['batch_size']
+    effective_batch_size = batch_size *  size
     num_steps = config['total_training_steps']
 
     checkpoint_dir = f"{config['checkpoint_dir']}_{config['val_steps']}AR"
@@ -266,7 +268,7 @@ def train_graphcast(
     print_rank0("GraphCast Distributed Training with MPI")
     print_rank0(f"{'='*70}")
     print_rank0(f"MPI Processes: {size}")
-    print_rank0(f"Effective batch size: {config['batch_size'] * size}")
+    print_rank0(f"Effective batch size: {effective_batch_size}")
     print_rank0(f"Learning schedule: {config['lr_scheduler']}")
     print_rank0(f"{'='*70}\n")
     
@@ -286,7 +288,7 @@ def train_graphcast(
     print_rank0("Loading initial model configuration...")
     ckpt = checkpoint.load(
         config['initial_params'],
-        graphcast.CheckPoint
+        gc.CheckPoint
     )
 
     model_config = ckpt.model_config
@@ -354,13 +356,13 @@ def train_graphcast(
             weight_decay=config['weight_decay'],
         )
 
-        #if training was stopped due to walltime limit, set resume to True in the yaml file to restart training
-        if config['resume']:
-            opt_state = new_ckpt['opt_state']
-            start_step = new_ckpt['step'] + 1
-        else:
-            opt_state = optimizer.init(params)
-            start_step = 0
+    #if training was stopped due to walltime limit, set resume to True in the yaml file to restart training
+    if config['resume']:
+        opt_state = new_ckpt['opt_state']
+        start_step = new_ckpt['step'] + 1
+    else:
+        opt_state = optimizer.init(params)
+        start_step = 0
 
     try:
         print(f"Getting data generator on rank {rank}...\n")
@@ -410,17 +412,27 @@ def train_graphcast(
             elapsed_time = time() - t0
             print_rank0(f"\nElapsed time for computation for step {step+1}/{num_steps}: {elapsed_time} seconds")
             print_rank0(f"  Training Loss: {train_loss:.6f}, lr: {lr:.2e}")
+
+            if config['save_diag'] and (rank == 0):
+                print(f"Save loss per var to file: ")
+                diagnostics_np = jax.tree.map(lambda x: np.array(x), diagnostics)
+                print(diagnostics_np)
+                #with open(f'diagnostics/loss_per_var_step{step}.pkl', 'wb') as f:
+                #    pickle.dump(diagnostics_np, f)
             
             # Validation
             if config['validate'] and (step % config['val_frequency'] == 0):
              
-                inputs_val, targets_val, forcings_val = valid_generator.generate()
-                
-                val_loss_raw, _, _, _ = grads_fn_jit(
-                    params, state, inputs_val, targets_val, forcings_val
-                )
-                val_loss = float(val_loss_raw)
-                
+                val_loss = 0.0
+                for i in tqdm(range(int(len(valid_generator) / effective_batch_size))):
+                    inputs_val, targets_val, forcings_val = valid_generator.generate()
+                    
+                    val_loss_raw, _, _, _ = grads_fn_jit(
+                        params, state, inputs_val, targets_val, forcings_val
+                    )
+                    val_loss += float(val_loss_raw)
+                   
+                val_loss = val_loss / (len(valid_generator) / effective_batch_size)
                 print_rank0(f"  Validation Loss: {val_loss:.6f}")
 
             else:
@@ -460,13 +472,13 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Load and parse configuration file.')
     parser.add_argument('--config', type=str, required=True, help='config.yaml file')
-    args = parser.parse_args()
+    args, remaining_argv = parser.parse_known_args()
     
     with open(args.config) as f:
-        config_dict = yaml.full_load(f)
+        config_dict = yaml.safe_load(f)
 
     # AMSE related
-    if config_dict['loss_metric'] = "AMSE":
+    if config_dict['loss_metric'] == "AMSE":
         error_group = parser.add_argument_group('Error options')
 
         error_group.add_argument('--error-weights',type=str,dest='error_weight_file',default=None,
@@ -481,7 +493,7 @@ if __name__ == "__main__":
                             help='Compute loss in spectral space, with correlation/ampltidue adjustment')
         error_group.add_argument('--mae',action='store_true', dest='mae',default=False,
                             help='Compute loss with mean absolute error rather than MSE')
-        args = parser.parse_args()
+        args = parser.parse_args(namespace=args)
         graphcast.loss_utils.parse_arguments(args)
     
     try:
