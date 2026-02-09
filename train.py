@@ -37,7 +37,7 @@ from graphcast import xarray_jax
 from graphcast import xarray_tree
 
 import graphcast.loss_utils
-from graphcast.data_generator import SingleZarrDataGenerator
+from graphcast.data_generator import SingleZarrDataGenerator, TwoZarrDataGenerator
 
 #logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -366,20 +366,11 @@ def train_graphcast(
 
     try:
         print(f"Getting data generator on rank {rank}...\n")
-        train_generator = SingleZarrDataGenerator(
-            zarr_path=config['train_zarr_path'],
-            task_config=task_config,
-            n_target_steps=config['val_steps'],
-            batch_size=config['batch_size'],
-            prefetch_size=config['prefetch_size'],
-            num_workers=config['num_workers'],
-            rank=rank,
-            size=size,
-        )
 
-        if config['validate']:
-            valid_generator = SingleZarrDataGenerator(
-                zarr_path=config['val_zarr_path'],
+        if config['inputs_targets_same']:
+            train_generator = SingleZarrDataGenerator(
+                config_params=config,
+                zarr_path=config['train_zarr_path'],
                 task_config=task_config,
                 n_target_steps=config['val_steps'],
                 batch_size=config['batch_size'],
@@ -389,13 +380,58 @@ def train_graphcast(
                 size=size,
             )
 
+            if config['validate']:
+                valid_generator = SingleZarrDataGenerator(
+                    config_params=config,
+                    zarr_path=config['val_zarr_path'],
+                    task_config=task_config,
+                    n_target_steps=config['val_steps'],
+                    batch_size=config['batch_size'],
+                    prefetch_size=config['prefetch_size'],
+                    num_workers=config['num_workers'],
+                    rank=rank,
+                    size=size,
+                )
+
+        else:
+            train_generator = TwoZarrDataGenerator(
+                config_params=config,
+                zarr_path=config['train_zarr_path'],
+                target_zarr_path=config['train_target_zarr_path'],
+                task_config=task_config,
+                n_target_steps=config['val_steps'],
+                batch_size=config['batch_size'],
+                prefetch_size=config['prefetch_size'],
+                num_workers=config['num_workers'],
+                rank=rank,
+                size=size,
+            )
+            train_generator.start_prefetching()
+
+            if config['validate']:
+                valid_generator = TwoZarrDataGenerator(
+                    config_params=config,
+                    zarr_path=config['val_zarr_path'],
+                    target_zarr_path=config['val_target_zarr_path'],
+                    task_config=task_config,
+                    n_target_steps=config['val_steps'],
+                    batch_size=config['batch_size'],
+                    prefetch_size=config['prefetch_size'],
+                    num_workers=config['num_workers'],
+                    rank=rank,
+                    size=size,
+                )
+                valid_generator.start_prefetching()
+
         print_rank0("Starting training...\n")
+        
         
         # Training loop
         for step in range(start_step, num_steps):
 
             t0 = time()
-            lr = lr_scheduler(step)
+            if config['lr_scheduler'] == "cosine_decay":
+                lr = lr_scheduler(step)
          
             inputs, targets, forcings = train_generator.generate()
 
@@ -442,7 +478,7 @@ def train_graphcast(
             updates, opt_state = optimizer.update(grads, opt_state, params)
             params = optax.apply_updates(params, updates)
             
-            # Checkpoin0t
+            # Checkpoint
             if (step%config['checkpoint_frequency'] == 0) | (step == num_steps-1):
                 save_checkpoint(
                     params, opt_state, step,

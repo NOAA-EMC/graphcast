@@ -1,4 +1,6 @@
 *.egg*
 __pycache__
 *.swp
-/slurm/
+configs/
+*.sh
+

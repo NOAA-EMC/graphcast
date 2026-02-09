@@ -1,15 +1,15 @@
 #!/bin/bash
 
-#SBATCH --job-name=gdas1AR_control
+#SBATCH --job-name=train12_r1
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=2
 #SBATCH --gpus-per-node=2
 #SBATCH --account=gpu-ai4wp
-#SBATCH --time=36:00:00
+#SBATCH --time=12:00:00
 #SBATCH --partition=u1-h100
 #SBATCH --qos=gpu
-#SBATCH --output=slurm/train_gdas_1AR_control.%j.out
-#SBATCH --error=slurm/train_gdas_1AR_control.%j.err
+#SBATCH --output=slurm/train_gdas_12AR_control.%j.out
+#SBATCH --error=slurm/train_gdas_12AR_control.%j.err
 #SBATCH --exclusive
 
 module purge 
@@ -58,7 +58,7 @@ mpirun -np ${SLURM_NTASKS} \
     -x XLA_PYTHON_CLIENT_PREALLOCATE \
     -x XLA_PYTHON_CLIENT_MEM_FRACTION \
     -x TF_FORCE_UNIFIED_MEMORY \
-    numactl --interleave=all python train.py --config=configs/finetune_gdas_gdas_13pl_control.yaml
+    numactl --interleave=all python train.py --config=configs/finetune_gdas_gdas_13pl_run01.yaml
 
 echo ""
 echo "Job finished at: $(date)"
